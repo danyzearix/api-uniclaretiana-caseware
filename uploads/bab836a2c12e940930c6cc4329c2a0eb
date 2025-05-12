@@ -1,0 +1,22 @@
+[
+  {
+    "identificacion":10000000,
+    "nombre":"Katherine",
+    "correo":"katherinepushainagonzalez@gmail.com",
+    "telefono":3002187785,
+    "ciudad":"Uribia",
+    "estado":"Admitido",
+    "sede":"URIBIA",
+    "programa":"  TSU03  TRABAJO SOCIAL"
+  },
+  {
+    "identificacion":100000001,
+    "nombre":"Lopez",
+    "correo":"monserra.lopez1@gmail.com",
+    "telefono":3003382344,
+    "ciudad":"Medellin",
+    "estado":"Inscrito",
+    "sede":"MEDELLÍN",
+    "programa":"  TSM06  TRABAJO SOCIAL"
+  }
+]

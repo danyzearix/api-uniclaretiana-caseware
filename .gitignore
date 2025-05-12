@@ -1,0 +1,38 @@
+# Dependencias de Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Entornos
+.env
+.env.test
+.env.*.local
+
+# Directorios de compilación
+dist/
+build/
+
+# Cache de herramientas
+.npm
+.yarn
+.pnpm
+.cache/
+.next/
+out/
+
+# Editor de código
+.vscode/
+.idea/
+
+# Otros
+*.tgz
