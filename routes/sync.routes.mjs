@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs/promises';
 import { syncLeadsFromJson } from '../controllers/sync.controller.mjs';
+import { testLeadMatchController } from '../controllers/match.controller.mjs';
 
 const router = Router();
 const upload = multer({ dest: 'uploads/' });
@@ -30,5 +31,10 @@ router.post('/leads/upload', upload.single('archivo'), async (req, res) => {
     res.status(500).json({ error: 'Error al procesar archivo JSON' });
   }
 });
+
+
+
+router.post('/test-match', testLeadMatchController);
+
 
 export default router;

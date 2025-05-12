@@ -1,0 +1,32 @@
+[
+  {
+    "identificacion":null,
+    "nombre":"Daniel prueba",
+    "correo":"correo3@gmail.com",
+    "telefono":null,
+    "ciudad":null,
+    "estado":"INSCRITO",
+    "sede":null,
+    "programa":null
+  },
+  {
+    "identificacion":null,
+    "nombre":"Prueba API 2",
+    "correo":"correo2@gmail.com",
+    "telefono":null,
+    "ciudad":null,
+    "estado":"ADMITIDO",
+    "sede":null,
+    "programa":null
+  },
+  {
+    "identificacion":null,
+    "nombre":"Prueba API 1",
+    "correo":"correo1@gmail.com",
+    "telefono":null,
+    "ciudad":null,
+    "estado":"MATRICULADO",
+    "sede":null,
+    "programa":null
+  }
+]

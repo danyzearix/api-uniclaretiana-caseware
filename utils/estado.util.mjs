@@ -1,8 +1,15 @@
 import { KOMMO_ETAPA_ENUMS } from '../config/kommo.enums.mjs';
 
-export const esEstadoMasAvanzado = (actual, nuevo) => {
-  const estadoActual = KOMMO_ETAPA_ENUMS[actual?.toUpperCase()] || { orden: 0 };
-  const estadoNuevo  = KOMMO_ETAPA_ENUMS[nuevo?.toUpperCase()] || { orden: 0 };
+export const esEstadoMasAvanzado = (actualEnumId, nuevoEstadoTexto) => {
+  const estadoNuevo = KOMMO_ETAPA_ENUMS[nuevoEstadoTexto?.toUpperCase()];
+  if (!estadoNuevo) return false;
+
+  // Buscar el enum inverso por ID
+  const estadoActual = Object.values(KOMMO_ETAPA_ENUMS).find(e => e.enum_id === actualEnumId);
+
+  // Si no tiene estado actual, permitir avanzar
+  if (!estadoActual) return true;
+
   return estadoNuevo.orden > estadoActual.orden;
 };
 

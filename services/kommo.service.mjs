@@ -2,56 +2,46 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 import qs from 'qs';
 
-
 dotenv.config();
 
 const BASE_URL = process.env.BASEURL;
 
-// //Metodo para LLAMAR CONTACTOS
-// export const getContacts = async () => {
-//   const response = await axios.get(`${process.env.BASEURL}/contacts`, {
-//     headers: {
-//       Authorization: `Bearer ${process.env.CLIENT_SECRET}`
-//     }
-//   });
-//   return response.data;
-// };
+/**
+ * Obtiene todos los contactos con paginación.
+ */
+export const getAllContacts = async (contactIds = []) => {
+  if (!contactIds.length) return [];
 
-export const getAllContacts = async () => {
   const todos = [];
-  let page = 1;
-  let continuar = true;
 
-  try {
-    while (continuar) {
-      const response = await axios.get(`${process.env.BASEURL}/contacts`, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLIENT_SECRET}`
-        },
+  for (const id of contactIds) {
+    try {
+      const response = await axios.get(`${BASE_URL}/contacts`, {
+        headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` },
         params: {
-          page,
-          limit: 250
-        }
+          'filter[id]': id,
+          limit: 1
+        },
+        paramsSerializer: params => qs.stringify(params, { encode: false })
       });
 
       const items = response.data._embedded?.contacts || [];
       todos.push(...items);
 
-      if (response.data._links?.next?.href) {
-        page += 1;
-      } else {
-        continuar = false;
-      }
+      console.log(`✅ Contacto recibido para ID ${id}: ${items.length}`);
+    } catch (error) {
+      console.error(`❌ Error al obtener contacto ${id}:`, error.response?.data || error.message);
     }
-
-    return todos;
-
-  } catch (error) {
-    console.error('❌ Error al obtener contactos:', error.response?.data || error.message);
-    throw new Error('Error al obtener contactos');
   }
+
+  console.log(`✅ Total contactos recuperados: ${todos.length}`);
+  return todos;
 };
 
+
+/**
+ * Obtiene los leads filtrados por pipeline y por periodo SINU, incluyendo los contactos relacionados.
+ */
 export const getFilteredLeadsPorPeriodo = async () => {
   const todosLeads = [];
   let page = 1;
@@ -60,10 +50,9 @@ export const getFilteredLeadsPorPeriodo = async () => {
   try {
     while (seguir) {
       const response = await axios.get(`${BASE_URL}/leads`, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLIENT_SECRET}`
-        },
+        headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` },
         params: {
+          'filter[pipeline_id]': 11109788,
           with: 'contacts',
           page,
           limit: 250
@@ -72,20 +61,9 @@ export const getFilteredLeadsPorPeriodo = async () => {
       });
 
       const leads = response.data._embedded?.leads || [];
+      todosLeads.push(...leads);
 
-      // Filtrar por PERIODO SINU
-      const leadsFiltrados = leads.filter(lead =>
-        lead.custom_fields_values?.some(f =>
-          f.field_id === 2102547 &&
-          f.values?.some(v => v.enum_id === 1521409)
-        )
-      );
-
-      todosLeads.push(...leadsFiltrados);
-
-      // Verificar si hay más páginas
-      const nextHref = response.data._links?.next?.href;
-      if (nextHref) {
+      if (response.data._links?.next?.href) {
         page += 1;
       } else {
         seguir = false;
@@ -100,20 +78,18 @@ export const getFilteredLeadsPorPeriodo = async () => {
   }
 };
 
-//Metodo para LLAMAR todos los leads
+/**
+ * Método para llamar a todos los leads con filtro por periodo SINU.
+ */
 export const getLeads = async () => {
   try {
-    const response = await axios.get(`${process.env.BASEURL}/leads`, {
+    const response = await axios.get(`${BASE_URL}/leads`, {
       headers: {
         Authorization: `Bearer ${process.env.CLIENT_SECRET}`
       },
       params: {
         with: 'contacts',
-        filter: {
-          custom_fields_values: {
-            2102547: 1521409
-          }
-        }
+        'filter[custom_fields_values][2102547]': 1521409
       },
       paramsSerializer: params => qs.stringify(params, { encode: false })
     });
@@ -126,51 +102,60 @@ export const getLeads = async () => {
   }
 };
 
-//Metodo para ACTUALIZAR 1 lead por ID
+/**
+ * Método para actualizar un solo lead por ID.
+ */
 export const updateLeadById = async (leadId, data) => {
   try {
-    const response = await axios.patch(`${process.env.BASEURL}/leads/${leadId}`, [data], {
+    const response = await axios.patch(`${BASE_URL}/leads/${leadId}`, [data], {
       headers: {
         Authorization: `Bearer ${process.env.CLIENT_SECRET}`
       }
     });
 
-    console.log(`✅ Respuesta de Kommo para lead ${leadId}:`);
-    console.log(JSON.stringify(response.data, null, 2)); // Mostrar respuesta de Kommo
-
+    console.log(`✅ Lead ${leadId} actualizado correctamente:`, JSON.stringify(response.data, null, 2));
     return response.data;
+
   } catch (error) {
-    console.error('Error al actualizar el lead:', error.response?.data || error.message);
+    console.error('❌ Error al actualizar el lead:', error.response?.data || error.message);
     throw error;
   }
 };
 
-//Método para LLAMAR 1 lead por ID
- 
-  export const getLeadById = async (leadId) => {
-    try {
-      const response = await axios.get(`${process.env.BASEURL}/leads/${leadId}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLIENT_SECRET}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error al obtener lead con ID ${leadId}:`, error.response?.data || error.message);
-      throw error;
-    }
-  };
+/**
+ * Método para obtener un solo lead por ID.
+ */
+export const getLeadById = async (leadId) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/leads/${leadId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLIENT_SECRET}`
+      }
+    });
+    return response.data;
 
-  export const updateMultipleLeads = async (leadsArray) => {
-    try {
-      const response = await axios.patch(`${BASE_URL}/leads`, leadsArray, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLIENT_SECRET}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error al actualizar múltiples leads:', error.response?.data || error.message);
-      throw error;
-    }
-  };
+  } catch (error) {
+    console.error(`❌ Error al obtener lead ${leadId}:`, error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Método para actualizar múltiples leads.
+ */
+export const updateMultipleLeads = async (leadsArray) => {
+  try {
+    console.log(`🚀 Enviando actualización a Kommo para ${leadsArray.length} leads`);
+    console.log(JSON.stringify(leadsArray, null, 2));
+    const response = await axios.patch(`${BASE_URL}/leads`, leadsArray, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLIENT_SECRET}`
+      }
+    });
+    return response.data;
+
+  } catch (error) {
+    console.error('❌ Error al actualizar múltiples leads:', error.response?.data || error.message);
+    throw error;
+  }
+};
