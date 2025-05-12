@@ -2,6 +2,14 @@ import { getFilteredLeadsPorPeriodo, getAllContacts } from '../services/kommo.se
 import { esEstadoMasAvanzado, obtenerEnumId } from '../utils/estado.util.mjs';
 import { updateMultipleLeads } from '../services/kommo.service.mjs';
 import { KOMMO_ETAPA_ENUMS } from '../config/kommo.enums.mjs';
+import axios from 'axios';
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+const BASE_URL = process.env.BASEURL;
+
+
 
 export const testLeadMatchController = async (req, res) => {
   try {
@@ -62,6 +70,47 @@ export const testLeadMatchController = async (req, res) => {
         const enumNuevo = obtenerEnumId(estadoNuevo);
 
         console.log(`🔄 Comparando estados: Actual Status ID = ${actualStatusId}, Nuevo Estado = ${estadoNuevo} (${enumNuevo})`);
+        // ✅ Aquí empieza el nuevo bloque para completar Email o Teléfono
+const contactoIdPrincipal = match._embedded?.contacts?.[0]?.id;
+const contacto = contactosMap.get(contactoIdPrincipal);
+
+if (contacto) {
+  const customFields = contacto.custom_fields_values || [];
+  const tieneEmailEnCRM = customFields.some(f => f.field_code === 'EMAIL' && f.values.length > 0);
+  const tieneTelefonoEnCRM = customFields.some(f => f.field_code === 'PHONE' && f.values.length > 0);
+
+  const actualizacionesContacto = [];
+
+  if (!tieneEmailEnCRM && leadEmail) {
+    console.log(`➕ Agregando EMAIL ${leadEmail} al contacto ID ${contacto.id}`);
+    actualizacionesContacto.push({
+      field_code: 'EMAIL',
+      values: [{ value: leadEmail }]
+    });
+  }
+
+  if (!tieneTelefonoEnCRM && leadTelefono) {
+    console.log(`➕ Agregando TELÉFONO ${leadTelefono} al contacto ID ${contacto.id}`);
+    actualizacionesContacto.push({
+      field_code: 'PHONE',
+      values: [{ value: leadTelefono }]
+    });
+  }
+
+  if (actualizacionesContacto.length > 0) {
+    try {
+      const contactoUpdateResponse = await axios.patch(`${BASE_URL}/contacts/${contacto.id}`, {
+        custom_fields_values: actualizacionesContacto
+      }, {
+        headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` }
+      });
+
+      console.log('✅ Contacto actualizado en Kommo:', JSON.stringify(contactoUpdateResponse.data, null, 2));
+    } catch (error) {
+      console.error(`❌ Error al actualizar contacto ${contacto.id}:`, error.response?.data || error.message);
+    }
+  }
+}
 
         resultados.push({
           correo: leadEmail,
