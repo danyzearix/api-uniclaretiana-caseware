@@ -9,8 +9,6 @@ dotenv.config();
 
 const BASE_URL = process.env.BASEURL;
 
-
-
 export const testLeadMatchController = async (req, res) => {
   try {
     const leadsExcel = req.body;
@@ -70,47 +68,48 @@ export const testLeadMatchController = async (req, res) => {
         const enumNuevo = obtenerEnumId(estadoNuevo);
 
         console.log(`🔄 Comparando estados: Actual Status ID = ${actualStatusId}, Nuevo Estado = ${estadoNuevo} (${enumNuevo})`);
-        // ✅ Aquí empieza el nuevo bloque para completar Email o Teléfono
-const contactoIdPrincipal = match._embedded?.contacts?.[0]?.id;
-const contacto = contactosMap.get(contactoIdPrincipal);
 
-if (contacto) {
-  const customFields = contacto.custom_fields_values || [];
-  const tieneEmailEnCRM = customFields.some(f => f.field_code === 'EMAIL' && f.values.length > 0);
-  const tieneTelefonoEnCRM = customFields.some(f => f.field_code === 'PHONE' && f.values.length > 0);
+        const contactoIdPrincipal = match._embedded?.contacts?.[0]?.id;
+        const contacto = contactosMap.get(contactoIdPrincipal);
 
-  const actualizacionesContacto = [];
+        if (contacto) {
+          const customFields = contacto.custom_fields_values || [];
+          const tieneEmailEnCRM = customFields.some(f => f.field_code === 'EMAIL' && f.values.length > 0);
+          const tieneTelefonoEnCRM = customFields.some(f => f.field_code === 'PHONE' && f.values.length > 0);
 
-  if (!tieneEmailEnCRM && leadEmail) {
-    console.log(`➕ Agregando EMAIL ${leadEmail} al contacto ID ${contacto.id}`);
-    actualizacionesContacto.push({
-      field_code: 'EMAIL',
-      values: [{ value: leadEmail }]
-    });
-  }
+          const actualizacionesContacto = [];
 
-  if (!tieneTelefonoEnCRM && leadTelefono) {
-    console.log(`➕ Agregando TELÉFONO ${leadTelefono} al contacto ID ${contacto.id}`);
-    actualizacionesContacto.push({
-      field_code: 'PHONE',
-      values: [{ value: leadTelefono }]
-    });
-  }
+          if (!tieneEmailEnCRM && leadEmail) {
+            console.log(`➕ Agregando EMAIL ${leadEmail} al contacto ID ${contacto.id}`);
+            actualizacionesContacto.push({
+              field_code: 'EMAIL',
+              values: [{ value: leadEmail }]
+            });
+          }
 
-  if (actualizacionesContacto.length > 0) {
-    try {
-      const contactoUpdateResponse = await axios.patch(`${BASE_URL}/contacts/${contacto.id}`, {
-        custom_fields_values: actualizacionesContacto
-      }, {
-        headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` }
-      });
+          if (!tieneTelefonoEnCRM && leadTelefono) {
+            console.log(`➕ Agregando TELÉFONO ${leadTelefono} al contacto ID ${contacto.id}`);
+            actualizacionesContacto.push({
+              field_code: 'PHONE',
+              values: [{ value: leadTelefono }]
+            });
+          }
 
-      console.log('✅ Contacto actualizado en Kommo:', JSON.stringify(contactoUpdateResponse.data, null, 2));
-    } catch (error) {
-      console.error(`❌ Error al actualizar contacto ${contacto.id}:`, error.response?.data || error.message);
-    }
-  }
-}
+          if (actualizacionesContacto.length > 0) {
+            try {
+              const contactoUpdateResponse = await axios.patch(`${BASE_URL}/contacts/${contacto.id}`, {
+                custom_fields_values: actualizacionesContacto
+              }, {
+                headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` },
+                timeout: 10000
+              });
+
+              console.log('✅ Contacto actualizado en Kommo:', JSON.stringify(contactoUpdateResponse.data, null, 2));
+            } catch (error) {
+              console.error(`❌ Error al actualizar contacto ${contacto.id}:`, error.response?.data || error.message);
+            }
+          }
+        }
 
         resultados.push({
           correo: leadEmail,
@@ -128,46 +127,55 @@ if (contacto) {
       }
     }
 
-    // Construir payload para actualización múltiple
-const leadsParaActualizar = resultados
-  .filter(r => r.encontrado && esEstadoMasAvanzado(r.actualStatusId, r.nuevoEstado))
-  .map(r => ({
-    id: r.leadId,
-    status_id: r.nuevoEnumId
-  }));
+    const leadsParaActualizar = resultados
+      .filter(r => r.encontrado && esEstadoMasAvanzado(r.actualStatusId, r.nuevoEstado))
+      .map(r => ({ id: r.leadId, status_id: r.nuevoEnumId }));
 
-if (leadsParaActualizar.length > 0) {
-  console.log('🚀 Ejecutando actualización real en Kommo para los siguientes leads:', JSON.stringify(leadsParaActualizar, null, 2));
+    if (leadsParaActualizar.length > 0) {
+      console.log('🚀 Ejecutando actualización real en Kommo para los siguientes leads:', JSON.stringify(leadsParaActualizar, null, 2));
 
-  try {
-    const updateResponse = await updateMultipleLeads(leadsParaActualizar);
-    console.log('✅ Respuesta de Kommo:', JSON.stringify(updateResponse, null, 2));
+      const lote = 10; // Reducido a 10 leads por grupo
+      const delayMs = 1000; // Aumentado a 1000ms entre cada grupo
 
-    return res.status(200).json({ 
-      resultados, 
-      actualizados: leadsParaActualizar, 
-      respuestaKommo: updateResponse 
-    });
+      const respuestas = [];
+
+      for (let i = 0; i < leadsParaActualizar.length; i += lote) {
+        const grupo = leadsParaActualizar.slice(i, i + lote);
+        console.log(`📦 Enviando actualización a Kommo para ${grupo.length} leads`);
+
+        try {
+          const updateResponse = await axios.patch(`${BASE_URL}/leads`, grupo, {
+            headers: { Authorization: `Bearer ${process.env.CLIENT_SECRET}` },
+            timeout: 10000
+          });
+          respuestas.push(updateResponse.data);
+        } catch (error) {
+          console.error('❌ Error al actualizar grupo en Kommo:', error.response?.data || error.message);
+          respuestas.push({ error: error.message });
+        }
+
+        if (i + lote < leadsParaActualizar.length) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+
+      return res.status(200).json({ 
+        resultados, 
+        actualizados: leadsParaActualizar, 
+        respuestasKommo: respuestas 
+      });
+
+    } else {
+      console.log('ℹ️ No hay leads para actualizar.');
+      return res.status(200).json({ 
+        resultados, 
+        mensaje: 'No hay leads para actualizar.' 
+      });
+    }
+
   } catch (error) {
-    console.error('❌ Error al actualizar en Kommo:', error.response?.data || error.message);
-    return res.status(500).json({ 
-      error: 'Error al actualizar en Kommo', 
-      detalle: error.response?.data || error.message 
-    });
+    console.error('❌ Error en testLeadMatchController:', error);
+    return res.status(500).json({ error: 'Error interno al procesar la prueba.' });
   }
-
-} else {
-  console.log('ℹ️ No hay leads para actualizar.');
-  return res.status(200).json({ 
-    resultados, 
-    mensaje: 'No hay leads para actualizar.' 
-  });
-}
-
-} catch (error) {
-  console.error('❌ Error en testLeadMatchController:', error);
-  return res.status(500).json({ error: 'Error interno al procesar la prueba.' });
-}
-
 };
 

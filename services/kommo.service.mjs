@@ -159,3 +159,31 @@ export const updateMultipleLeads = async (leadsArray) => {
     throw error;
   }
 };
+
+export const createContact = async (data) => {
+  try {
+    const response = await axios.post(`${BASE_URL}/contacts`, [data], {
+      headers: {
+        Authorization: `Bearer ${process.env.CLIENT_SECRET}`
+      }
+    });
+    return response.data._embedded.contacts[0];
+  } catch (error) {
+    console.error('❌ Error al crear contacto:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const createLead = async (data) => {
+  try {
+    const response = await axios.post(`${BASE_URL}/leads`, [data], {
+      headers: {
+        Authorization: `Bearer ${process.env.CLIENT_SECRET}`
+      }
+    });
+    return response.data._embedded.leads[0];
+  } catch (error) {
+    console.error('❌ Error al crear lead:', error.response?.data || error.message);
+    throw error;
+  }
+};
